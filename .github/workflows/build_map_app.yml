@@ -1,0 +1,70 @@
+name: Build Asteroid Map app for Beluga
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Cleaning runner (freeing ~35 GB of space)
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v5
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-cached-tools: 'true'
+
+      # 2. Downloading from fork
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'Generekalipsa/asteroid'
+          ref: 'master'
+
+      # 3. Git configuration
+      - name: Configure Git
+        run: |
+          git config --global user.email "builder@asteroidos.org"
+          git config --global user.name "GitHub Action"
+
+      # 4. Building Docker image
+      - name: Build Docker Toolchain
+        run: |
+          docker build --tag asteroidos-toolchain .
+
+     # 5. Setting up environment and compilation of .ipk packages
+      - name: Run Build in Docker for IPKs
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/workdir asteroidos-toolchain /bin/bash -c "
+            # 1. Installing older tar version (v1.34)
+            apt-get update && apt-get install -y wget dpkg &&
+            wget https://launchpad.net/ubuntu/+archive/primary/+files/tar_1.34+dfsg-1ubuntu0.1.22.04.3_amd64.deb -O /tmp/tar_old.deb &&
+            dpkg -i /tmp/tar_old.deb &&
+            
+            # 2. Changing ownership of workdir to 'ubuntu' user
+            chown -R ubuntu:ubuntu /workdir &&
+            
+            # 3. Running build as 'ubuntu'
+            su -s /bin/bash ubuntu -c '
+              cd /workdir &&
+              source ./prepare-build.sh beluga &&
+              
+              # Configuration
+              echo \"SRC_URI_pn-asteroid-map = \\\"git://github.com/Generekalipsa/asteroid-map.git;protocol=https;branch=master\\\"\" >> conf/local.conf &&
+              echo \"SRCREV_pn-asteroid-map = \\\"\${AUTOREV}\\\"\" >> conf/local.conf &&
+                           
+              # Compile map
+              bitbake asteroid-map
+            '
+          "
+
+      # 6. Uploading .ipk packages as Artifacts
+      - name: Upload IPK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: asteroid-packages
+          path: |
+            build/tmp/deploy/ipk/*/asteroid-map_*.ipk
