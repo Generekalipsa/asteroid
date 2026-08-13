@@ -39,10 +39,15 @@ jobs:
       - name: Run Build in Docker for IPKs
         run: |
           docker run --rm -v ${{ github.workspace }}:/workdir asteroidos-toolchain /bin/bash -c "
-            # changing ownership of workdir to user 'ubuntu'
+            # 1. Installing older tar version (v1.34)
+            apt-get update && apt-get install -y wget dpkg &&
+            wget https://launchpad.net/ubuntu/+archive/primary/+files/tar_1.34+dfsg-1ubuntu0.1.22.04.3_amd64.deb -O /tmp/tar_old.deb &&
+            dpkg -i /tmp/tar_old.deb &&
+            
+            # 2. Changing ownership of workdir to 'ubuntu' user
             chown -R ubuntu:ubuntu /workdir &&
             
-            # Running as 'ubuntu' user
+            # 3. Running build as 'ubuntu'
             su -s /bin/bash ubuntu -c '
               cd /workdir &&
               source ./prepare-build.sh beluga &&
