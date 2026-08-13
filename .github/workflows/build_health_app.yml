@@ -35,21 +35,27 @@ jobs:
         run: |
           docker build --tag asteroidos-toolchain .
 
-      # 5. Setting up environment and compilation of .ipk packages
+     # 5. Setting up environment and compilation of .ipk packages
       - name: Run Build in Docker for IPKs
         run: |
           docker run --rm -v ${{ github.workspace }}:/workdir asteroidos-toolchain /bin/bash -c "
-            cd /workdir &&
-            source ./prepare-build.sh beluga &&
+            # changing ownership of workdir to user 'ubuntu'
+            chown -R ubuntu:ubuntu /workdir &&
             
-            # Configuration
-            echo 'SRC_URI_pn-asteroid-health = \"git://github.com/Generekalipsa/asteroid-health.git;protocol=https;branch=master\"' >> conf/local.conf &&
-            echo 'SRCREV_pn-asteroid-health = \"\${AUTOREV}\"' >> conf/local.conf &&
-            echo 'SRC_URI_pn-sensorlogd = \"git://github.com/Generekalipsa/asteroid-sensorlogd.git;protocol=https;branch=master\"' >> conf/local.conf &&
-            echo 'SRCREV_pn-sensorlogd = \"\${AUTOREV}\"' >> conf/local.conf &&
-            
-            # Compile health and sensorlogd
-            bitbake asteroid-health asteroid-sensorlogd
+            # Running as 'ubuntu' user
+            su -s /bin/bash ubuntu -c '
+              cd /workdir &&
+              source ./prepare-build.sh beluga &&
+              
+              # Configuration
+              echo \"SRC_URI_pn-asteroid-health = \\\"git://github.com/Generekalipsa/asteroid-health.git;protocol=https;branch=master\\\"\" >> conf/local.conf &&
+              echo \"SRCREV_pn-asteroid-health = \\\"\${AUTOREV}\\\"\" >> conf/local.conf &&
+              echo \"SRC_URI_pn-sensorlogd = \\\"git://github.com/Generekalipsa/asteroid-sensorlogd.git;protocol=https;branch=master\\\"\" >> conf/local.conf &&
+              echo \"SRCREV_pn-sensorlogd = \\\"\${AUTOREV}\\\"\" >> conf/local.conf &&
+              
+              # Compile health and sensorlogd
+              bitbake asteroid-health asteroid-sensorlogd
+            '
           "
 
       # 6. Uploading .ipk packages as Artifacts
