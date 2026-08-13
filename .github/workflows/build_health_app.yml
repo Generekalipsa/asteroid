@@ -1,4 +1,4 @@
-name: Build Asteroid Health application for Beluga
+name: Build Asteroid Health app for Beluga
 
 on:
   workflow_dispatch:
