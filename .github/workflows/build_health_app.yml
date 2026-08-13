@@ -44,9 +44,9 @@ jobs:
             
             # Configuration
             echo 'SRC_URI_pn-asteroid-health = \"git://github.com/Generekalipsa/asteroid-health.git;protocol=https;branch=master\"' >> build/conf/local.conf &&
-            echo 'SRCREV_pn-asteroid-health = \"\${AUTOREV}\"' >> build/conf/local.conf &&
+            echo 'SRCREV_pn-asteroid-health = \"\${AUTOREV}\"' >> conf/local.conf &&
             echo 'SRC_URI_pn-sensorlogd = \"git://github.com/Generekalipsa/asteroid-sensorlogd.git;protocol=https;branch=master\"' >> build/conf/local.conf &&
-            echo 'SRCREV_pn-sensorlogd = \"\${AUTOREV}\"' >> build/conf/local.conf &&
+            echo 'SRCREV_pn-sensorlogd = \"\${AUTOREV}\"' >> conf/local.conf &&
             
             # Compile health and sensorlogd
             bitbake asteroid-health asteroid-sensorlogd
