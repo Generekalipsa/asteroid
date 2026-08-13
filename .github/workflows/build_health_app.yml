@@ -1,0 +1,62 @@
+name: Build Asteroid Health application for Beluga
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Cleaning runner (freeing ~35 GB of space)
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v5
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-cached-tools: 'true'
+
+      # 2. Downloading from fork
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'Generekalipsa/asteroid'
+          ref: 'master'
+
+      # 3. Git configuration
+      - name: Configure Git
+        run: |
+          git config --global user.email "builder@asteroidos.org"
+          git config --global user.name "GitHub Action"
+
+      # 4. Building Docker image
+      - name: Build Docker Toolchain
+        run: |
+          docker build --tag asteroidos-toolchain .
+
+      # 5. Setting up environment and compilation of .ipk packages
+      - name: Run Build in Docker for IPKs
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/workdir asteroidos-toolchain /bin/bash -c "
+            cd /workdir &&
+            source ./prepare-build.sh beluga &&
+            
+            # Configuration
+            echo 'SRC_URI_pn-asteroid-health = \"git://github.com/Generekalipsa/asteroid-health.git;protocol=https;branch=master\"' >> build/conf/local.conf &&
+            echo 'SRCREV_pn-asteroid-health = \"\${AUTOREV}\"' >> build/conf/local.conf &&
+            echo 'SRC_URI_pn-sensorlogd = \"git://github.com/Generekalipsa/asteroid-sensorlogd.git;protocol=https;branch=master\"' >> build/conf/local.conf &&
+            echo 'SRCREV_pn-sensorlogd = \"\${AUTOREV}\"' >> build/conf/local.conf &&
+            
+            # Compile health and sensorlogd
+            bitbake asteroid-health asteroid-sensorlogd
+          "
+
+      # 6. Uploading .ipk packages as Artifacts
+      - name: Upload IPK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: asteroid-packages
+          path: |
+            build/tmp/deploy/ipk/*/asteroid-health_*.ipk
+            build/tmp/deploy/ipk/*/asteroid-sensorlogd_*.ipk
